@@ -324,11 +324,7 @@ class UsgsAstroFrameSensorModel : public csm::RasterGM {
 
     double m_transX[3];
     double m_transY[3];
-    double m_majorAxis;
-    double m_minorAxis;
-    double m_focalLength;
     double m_spacecraftVelocity[3];
-    double m_sunPosition[3];
     double m_ccdCenter[2];
     double m_minElevation;
     double m_maxElevation;
@@ -345,12 +341,40 @@ class UsgsAstroFrameSensorModel : public csm::RasterGM {
     double m_pixelPitch;
     double m_iTransS[3];
     double m_iTransL[3];
-    double m_ephemerisTime;
     double m_originalHalfSamples;
     double m_boresight[3];
-    int m_nLines;
-    int m_nSamples;
     int m_nParameters;
+
+
+    std::string m_focal_length_model[3];
+    double m_focal2pixel_samples[];
+    double m_focal2pixel_lines[];
+    std::string m_radii[3];
+    double m_sensor_location[3];
+    double m_sensor_velocity[3];
+    double m_sun_position[3];
+    double m_sun_velocity[3];
+    int m_starting_detector_sample;
+    int m_starting_detector_line;
+    int m_detector_center[2];
+    std::string m_reference_height[3];
+    double m_starting_ephemeris_time;
+    int m_image_lines;
+    int m_image_samples;
+    std::string m_sensor_orientation[];
+    int m_line_scan_rate[3];
+    int m_detector_sample_summing;
+    int m_detector_line_summing;
+    bool m_apply_light_time_correction;
+    int m_number_of_ephemerides;
+    int m_number_of_quaternions;
+    double m_dt_ephemeris;
+    double m_t0_ephemeris;
+    double m_dt_quaternion;
+    double m_t0_quaternion;
+    double m_optical_distortion_coefficients[];
+    std::string m_optical_distortion_key;
+    std::string m_interpolation_method;
 
     csm::NoCorrelationModel _no_corr_model;
 

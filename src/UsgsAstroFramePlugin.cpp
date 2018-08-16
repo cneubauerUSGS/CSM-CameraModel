@@ -38,16 +38,27 @@ const std::string UsgsAstroFramePlugin::_ISD_KEYWORD[] =
     "image_lines",
     "image_samples",
     "radii",
-    "reference_height",
-    "starting_detector_line",
+    "optical_distortion",
     "starting_detector_sample",
+    "starting_detector_line",
     "focal2pixel_samples",
     "focal2pixel_lines",
-    "optical_distortion",
-    // change these, before they were x_origin, x_location, x_sun_position
     "sensor_location",
+    "sensor_velocity",
+    "sun_position",
+    "sun_velocity",
     "sensor_orientation",
-    "sun_position"
+    "line_scan_rate",
+    "detector_sample_summing",
+    "detector_line_summing",
+    "apply_light_time_correction",
+    "number_of_ephemerides",
+    "number_of_quaternions",
+    "dt_ephemeris",
+    "t0_ephemeris",
+    "t0_quaternion",
+    "reference_height",
+    "interpolation_method"
 };
 
 const int         UsgsAstroFramePlugin::_NUM_STATE_KEYWORDS = 32;
@@ -59,19 +70,31 @@ const std::string UsgsAstroFramePlugin::_STATE_KEYWORD[] =
     "m_radii",
     "m_sensor_location",
     "m_sun_position",
-    "m_startingDetectorSample",
-    "m_startingDetectorLine",,
+    "m_sun_velocity",
+    "m_starting_detector_sample",
+    "m_starting_detector_line",
     "m_detector_center",
-    "m_line_pp",
-    "m_sample_pp",
     "m_reference_height",
     "m_starting_ephemeris_time",
-    "m_sensor_orientatoin",
     "m_image_lines",
     "m_image_samples",
     "m_currentParameterValue",
     "m_currentParameterCovariance",
-    "m_sensor_location"
+    "m_sensor_velocity",
+    "m_sensor_orientation",
+    "m_line_scan_rate",
+    "m_detector_sample_summing",
+    "m_detector_line_summing",
+    "m_apply_light_time_correction",
+    "m_number_of_ephemerides",
+    "m_number_of_quaternions",
+    "m_dt_ephemeris",
+    "m_t0_ephemeris",
+    "m_dt_quaternion",
+    "m_t0_quaternion",
+    "m_optical_distortion_coefficients",
+    "m_optical_distortion_key",
+    "m_interpolation_method"
 };
 
 
@@ -193,6 +216,14 @@ csm::Model *UsgsAstroFramePlugin::constructModelFromState(const std::string& mod
 
 
     mdsensor_model->m_starting_ephemeris_time = state["m_starting_ephemeris_time"];
+    mdsensor_model->m_detector_line_summing = state["m_detector_line_summing"];
+    mdsensor_model->m_apply_light_time_correction = state["m_apply_light_time_correction"];
+    mdsensor_model->m_number_of_ephemerides = state["m_number_of_ephemerides"];
+    mdsensor_model->m_number_of_quaternions = state["m_number_of_quaternions"];
+    mdsensor_model->m_dt_ephemeris = state["m_dt_ephemeris"];
+    mdsensor_model->m_t0_ephemeris = state["m_t0_ephemeris"];
+    mdsensor_model->m_t0_quaternion = state["m_t0_quaternion"];
+    mdsensor_model->m_interpolation_method = state["m_interpolation_method"];
 
     for (int i=0;i<2;i++){
       mdsensor_model->m_detector_center[i] = state["m_detector_center"][i];
@@ -200,31 +231,47 @@ csm::Model *UsgsAstroFramePlugin::constructModelFromState(const std::string& mod
     }
 
     for (int i=0;i<3;i++){
-      mdsensor_model->m_focal2pixel_samples[i] = state["m_focal2pixel_samples"][i];
-      mdsensor_model->m_focal2pixel_lines[i] = state["m_focal2pixel_lines"][i];
       mdsensor_model->m_sensor_location[i] = state["m_sensor_location"][i];
-      mdsensor_model->m_sunPosition[i] = state["m_sunPosition"][i];
+      mdsensor_model->m_sun_position[i] = state["m_sun_position"][i];
+      mdsensor_model->m_sensor_velocity[i] = state["m_sensor_velocity"][i];
+      mdsensor_model->m_sun_velocity[i] = state["m_sun_velocity"][i];
+      mdsensor_model->m_line_scan_rate[i] = state["m_line_scan_rate"][i];
     }
 
     for (int i=0;i<4;i++){
       mdsensor_model->m_focal_length_model[i] = state["m_focal_length_model"][i];
     }
 
-    mdsensor_model->m_startingDetectorLine = state["m_startingDetectorLine"];
-    mdsensor_model->m_startingDetectorSample = state["m_startingDetectorSample"];
-    mdsensor_model->m_line_pp = state["m_line_pp"];
-    mdsensor_model->m_sample_pp = state["m_sample_pp"];
+    for (int i=0; i < state["m_sensor_orientation"].size();i++){
+      mdsensor_model->m_sensor_orientation[i] = state["m_sensor_orientation"][i];
+    }
+
+    for (int i=0; i < state["m_optical_distortion_coefficients"].size();i++){
+      mdsensor_model->m_optical_distortion_coefficients[i] = state["m_optical_distortion_coefficients"][i];
+    }
+
+    for (int i=0; i < state["focal2pixel_samples"].size();i++){
+      mdsensor_model->m_focal2pixel_samples[i] = state["focal2pixel_samples"][i];
+    }
+
+    for (int i=0; i < state["focal2pixel_lines"].size();i++){
+      mdsensor_model->m_focal2pixel_lines[i] = state["focal2pixel_lines"][i];
+    }
+
+    mdsensor_model->m_detector_sample_summing = state["m_detector_sample_summing"];
+    mdsensor_model->m_starting_detector_line = state["m_starting_detector_line"];
+    mdsensor_model->m_starting_detector_sample = state["m_starting_detector_sample"];
     mdsensor_model->m_image_lines = state["m_image_lines"];
     mdsensor_model->m_image_samples = state["m_image_samples"];
-    mdsensor_model->m_minElevation = state["m_minElevation"];
-    mdsensor_model->m_maxElevation = state["m_maxElevation"];
-    mdsensor_model->m_optical_distortion[0] = state["m_optical_distortion"][0]
-    mdsensor_model->m_optical_distortion[1] = state["m_optical_distortion"][1]
+    mdsensor_model->m_reference_height[0] = state["m_reference_height[0]"];
+    mdsensor_model->m_reference_height[1] = state["m_reference_height[1]"];
+    mdsensor_model->m_optical_distortion_key = state["m_optical_distortion_key"];
 
     // Having types as vectors, instead of arrays makes interoperability with
     // the JSON library very easy.
     mdsensor_model->m_currentParameterValue = state["m_currentParameterValue"].get<std::vector<double>>();
     mdsensor_model->m_currentParameterCovariance = state["m_currentParameterCovariance"].get<std::vector<double>>();
+
 
 sensor_model = mdsensor_model;
 return sensor_model;
@@ -246,44 +293,70 @@ csm::Model *UsgsAstroFramePlugin::constructModelFromISD(const csm::Isd &imageSup
   // Keep track of necessary keywords that are missing from the ISD.
   std::vector<std::string> missingKeywords;
 
-  sensorModel->m_startingDetectorSample =
+  sensorModel->m_starting_detector_sample =
       atof(imageSupportData.param("starting_detector_sample").c_str());
-  sensorModel->m_startingDetectorLine =
+  sensorModel->m_starting_detector_line =
       atof(imageSupportData.param("starting_detector_line").c_str());
+  sensorModel->m_detector_line_summing =
+      atof(imageSupportData.param("detector_line_summing").c_str());
+
+  sensorModel->m_detector_sample_summing = atof(imageSupportData.param("detector_sample_summing").c_str());
+  sensorModel->m_apply_light_time_correction = atof(imageSupportData.param("apply_light_time_correction").c_str());
+  sensorModel->m_number_of_ephemerides = atof(imageSupportData.param("number_of_ephemerides").c_str());
+  sensorModel->m_number_of_quaternions = atof(imageSupportData.param("number_of_quaternions").c_str());
+  sensorModel->m_dt_ephemeris = atof(imageSupportData.param("dt_ephemeris").c_str());
+  sensorModel->m_t0_ephemeris = atof(imageSupportData.param("t0_ephemeris").c_str());
+  sensorModel->m_dt_quaternion = atof(imageSupportData.param("dt_quaternion").c_str());
+  sensorModel->m_interpolation_method = imageSupportData.param("interpolation_method").c_str();
+
 
   for (int i=0;i<3;i++){
     sensorModel->m_sensor_location[i] =
-        atof(imageSupportData.param("sensor_location")[i].c_str());
+        atof(imageSupportData.param("sensor_location", i).c_str());
 
     sensorModel->m_sun_position[0] =
-        atof(imageSupportData.param("sun_position")[i].c_str());
+        atof(imageSupportData.param("sun_position", i).c_str());
 
-    sensorModel->m_sensor_orientatoin[i] =
-        atof(imageSupportData.param("sensor_orientation")[i].c_str());
-    if (imageSupportData.param("sensor_orientation")[i] == "") {
-      missingKeywords.push_back("sensor_orientation " + std:to_string(i));
-    }
+    sensorModel->m_sensor_velocity[i] = atof(imageSupportData.param("sensor_velocity", i).c_str());
+
+    sensorModel->m_sun_velocity[i] = atof(imageSupportData.param("sun_velocity", i).c_str());
+    sensorModel->m_line_scan_rate[i] = atof(imageSupportData.param("line_scan_rate", i).c_str());
   }
 
   for (int i=0;i<4;i++){
-    sensorModel->m_focal_length_model[i] = atof(imageSupportData.param("focal_length_model")[i].c_str());
+    sensorModel->m_focal_length_model[i] = atof(imageSupportData.param("focal_length_model", i).c_str());
   }
-  if (imageSupportData.param("focal_length_model")[1] == "") {
+  if (imageSupportData.param("focal_length_model", 1) == "") {
     missingKeywords.push_back("focal_length_model 1");
+  }
+
+  for (int i=0; i < imageSupportData.param("sensor_orientation").size();i++){
+    sensorModel->m_sensor_orientation[i] = imageSupportData.param("sensor_orientation", i).c_str();
+    if (imageSupportData.param("sensor_orientation", i) == "") {
+      missingKeywords.push_back("sensor_orientation i");
+    }
+  }
+
+  for (int i=0; i < imageSupportData.param("optical_distortion_coefficients").size();i++){
+    sensorModel->m_optical_distortion_coefficients[i] = atof(imageSupportData.param("optical_distortion_coefficients", i).c_str());
+  }
+
+  for (int i=0; i < imageSupportData.param("focal2pixel_samples").size();i++){
+    sensorModel->m_focal2pixel_samples[i] = atof(imageSupportData.param("focal2pixel_samples", i).c_str());
+    if (imageSupportData.param("focal2pixel_samples", i) == "") {
+      missingKeywords.push_back("focal2pixel_samples " + std::to_string(i));
+    }
+  }
+
+  for (int i=0; i < imageSupportData.param("focal2pixel_lines").size();i++){
+    sensorModel->m_focal2pixel_lines[i] = atof(imageSupportData.param("focal2pixel_lines", i).c_str());
+    if (imageSupportData.param("focal2pixel_lines", i) == "") {
+      missingKeywords.push_back("focal2pixel_lines " + std::to_string(i));
+    }
   }
 
   sensorModel->m_detector_center[0] = atof(imageSupportData.param("detector_center", 0).c_str());
   sensorModel->m_detector_center[1] = atof(imageSupportData.param("detector_center", 1).c_str());
-
-  if (imageSupportData.param("itrans_sample", 0) == "") {
-    missingKeywords.push_back("itrans_sample missing first element");
-  }
-  else if (imageSupportData.param("itrans_sample", 1) == "") {
-    missingKeywords.push_back("itrans_sample missing second element");
-  }
-  else if (imageSupportData.param("itrans_sample", 2) == "") {
-    missingKeywords.push_back("itrans_sample missing third element");
-  }
 
   sensorModel->m_starting_ephemeris_time = atof(imageSupportData.param("starting_ephemeris_time").c_str());
   if (imageSupportData.param("starting_ephemeris_time") == "") {
@@ -299,56 +372,26 @@ csm::Model *UsgsAstroFramePlugin::constructModelFromISD(const csm::Isd &imageSup
     missingKeywords.push_back("image_samples");
   }
 
-  sensorModel->m_focal2pixel_lines[0] = atof(imageSupportData.param("focal2pixel_lines", 0).c_str());
-  sensorModel->m_focal2pixel_lines[1] = atof(imageSupportData.param("focal2pixel_lines", 1).c_str());
-  sensorModel->m_focal2pixel_lines[2] = atof(imageSupportData.param("focal2pixel_lines", 2).c_str());
-  if (imageSupportData.param("focal2pixel_lines", 0) == "") {
-    missingKeywords.push_back("focal2pixel_lines 0");
-  }
-  else if (imageSupportData.param("focal2pixel_lines", 1) == "") {
-    missingKeywords.push_back("focal2pixel_lines 1");
-  }
-  else if (imageSupportData.param("focal2pixel_lines", 2) == "") {
-    missingKeywords.push_back("focal2pixel_lines 2");
-  }
-
-  sensorModel->m_focal2pixel_samples[0] = atof(imageSupportData.param("focal2pixel_samples", 0).c_str());
-  sensorModel->m_focal2pixel_samples[1] = atof(imageSupportData.param("focal2pixel_samples", 1).c_str());
-  sensorModel->m_focal2pixel_samples[2] = atof(imageSupportData.param("focal2pixel_samples", 2).c_str());
-  if (imageSupportData.param("focal2pixel_samples", 0) == "") {
-    missingKeywords.push_back("focal2pixel_samples 0");
-  }
-  else if (imageSupportData.param("focal2pixel_samples", 1) == "") {
-    missingKeywords.push_back("focal2pixel_samples 1");
-  }
-  else if (imageSupportData.param("focal2pixel_samples", 2) == "") {
-    missingKeywords.push_back("focal2pixel_samples 2");
-  }
-
-  sensorModel->m_radii[0] = 1000 * atof(imageSupportData.param("radii")[0].c_str());
-  if (imageSupportData.param("radii")[0] == "") {
+  sensorModel->m_radii[0] = 1000 * atof(imageSupportData.param("radii", 0).c_str());
+  if (imageSupportData.param("radii", 0) == "") {
     missingKeywords.push_back("radii 0");
   }
   // Do we assume that if we do not have a semi-minor axis, then the body is a sphere?
-  if (imageSupportData.param("radii")[1] == "") {
+  if (imageSupportData.param("radii", 1) == "") {
     sensorModel->m_radii[1] = sensorModel->m_radii[0];
   }
   else {
-    sensorModel->m_radii[1] = 1000 * atof(imageSupportData.param("m_radii")[1].c_str());
+    sensorModel->m_radii[1] = 1000 * atof(imageSupportData.param("m_radii", 1).c_str());
   }
 
-  sensorModel->m_radii[2] = imageSupportData.param("radii")[2].c_str());
-  if (imageSupportData.param("radii")[2] == "") {
+  sensorModel->m_radii[2] = atof(imageSupportData.param("radii", 2).c_str());
+  if (imageSupportData.param("radii", 2) == "") {
     missingKeywords.push_back("radii 2");
   }
-  sensorModel->m_minElevation = atof(imageSupportData.param("reference_height")[0].c_str());
-  sensorModel->m_maxElevation = atof(imageSupportData.param("reference_height")[1].c_str());
-  if (imageSupportData.param("reference_height")[0] == ""){
-      missingKeywords.push_back("reference_height 0");
-  }
-  if (imageSupportData.param("reference_height")[1] == ""){
-      missingKeywords.push_back("reference_height 1");
-  }
+
+  sensorModel->m_reference_height[0] = atof(imageSupportData.param("reference_height", 0).c_str());
+  sensorModel->m_reference_height[1] = atof(imageSupportData.param("reference_height", 1).c_str());
+  sensorModel->m_reference_height[2] = imageSupportData.param("reference_height", 2).c_str();
   // If we are missing necessary keywords from ISD, we cannot create a valid sensor model.
   if (missingKeywords.size() != 0) {
 
@@ -394,7 +437,6 @@ std::string UsgsAstroFramePlugin::getModelNameFromModelState(const std::string &
       csm::Error csmErr(aErrorType, aMessage, aFunction);
       throw(csmErr);
   }
-
 
   return UsgsAstroFrameSensorModel::_SENSOR_MODEL_NAME;
 }

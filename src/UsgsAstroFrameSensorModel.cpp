@@ -28,22 +28,22 @@ const std::string UsgsAstroFrameSensorModel::m_parameterName[] = {
 const int         UsgsAstroFrameSensorModel::_NUM_STATE_KEYWORDS = 32;
 const std::string UsgsAstroFrameSensorModel::_STATE_KEYWORD[] =
 {
-    "m_focalLength",
+    "m_focal_length_model",
     "m_iTransS",
     "m_iTransL",
     "m_boresight",
     "m_transX",
     "m_transY",
-    "m_majorAxis",
-    "m_minorAxis",
+    "m_radii",
+    "m_radii[1]",
     "m_spacecraftVelocity",
-    "m_sunPosition",
+    "m_sun_position",
     "m_startingDetectorSample",
     "m_startingDetectorLine",
     "m_targetName",
     "m_ifov",
     "m_instrumentID",
-    "m_focalLengthEpsilon",
+    "m_focal_length_model",
     "m_ccdCenter",
     "m_line_pp",
     "m_sample_pp",
@@ -55,9 +55,9 @@ const std::string UsgsAstroFrameSensorModel::_STATE_KEYWORD[] =
     "m_originalHalfSamples",
     "m_spacecraftName",
     "m_pixelPitch",
-    "m_ephemerisTime",
-    "m_nLines",
-    "m_nSamples",
+    "m_starting_ephemeris_time",
+    "m_image_lines",
+    "m_image_samples",
     "m_minElevation",
     "m_maxElevation",
     "m_currentParameterValue",
@@ -82,24 +82,24 @@ UsgsAstroFrameSensorModel::UsgsAstroFrameSensorModel() {
   m_iTransL[0] = 0.0;
   m_iTransL[0] = 0.0;
 
-  m_majorAxis = 0.0;
-  m_minorAxis = 0.0;
-  m_focalLength = 0.0;
+  m_radii[0] = 0.0;
+  m_radii[1] = 0.0;
+  m_focal_length_model[1] = 0.0;
 
   m_spacecraftVelocity[0] = 0.0;
   m_spacecraftVelocity[1] = 0.0;
   m_spacecraftVelocity[2] = 0.0;
 
-  m_sunPosition[0] = 0.0;
-  m_sunPosition[1] = 0.0;
-  m_sunPosition[2] = 0.0;
+  m_sun_position[0] = 0.0;
+  m_sun_position[1] = 0.0;
+  m_sun_position[2] = 0.0;
 
   m_startingDetectorSample = 0.0;
   m_startingDetectorLine = 0.0;
   m_targetName = "";
   m_ifov = 0.0;
   m_instrumentID = "";
-  m_focalLengthEpsilon = 0.0;
+  m_focal_length_model[2] = 0.0;
 
   m_ccdCenter[0] = 0.0;
   m_ccdCenter[1] = 0.0;
@@ -122,14 +122,14 @@ UsgsAstroFrameSensorModel::UsgsAstroFrameSensorModel() {
   m_iTransL[1] = 0.0;
   m_iTransL[2] = 0.0;
 
-  m_ephemerisTime = 0.0;
+  m_starting_ephemeris_time = 0.0;
   m_originalHalfSamples = 0.0;
   m_boresight[0] = 0.0;
   m_boresight[1] = 0.0;
   m_boresight[2] = 0.0;
 
-  m_nLines = 0;
-  m_nSamples = 0;
+  m_image_lines = 0;
+  m_image_samples = 0;
 
   m_currentParameterValue.assign(m_numParameters, 0.0);
   m_currentParameterCovariance.assign(m_numParameters*m_numParameters,0.0);
@@ -187,7 +187,7 @@ csm::ImageCoord UsgsAstroFrameSensorModel::groundToImage(
   double zo = z - getValue(2,adjustments);
 
   double f;
-  f = m_focalLength;
+  f = atof(m_focal_length_model[1].c_str());
 
   // Camera rotation matrix
   double m[3][3];
@@ -258,9 +258,9 @@ csm::EcefCoord UsgsAstroFrameSensorModel::imageToGround(const csm::ImageCoord &i
   udx = undistorted_cameraX;
   udy = undistorted_cameraY;
 
-  xl = m[0][0] * udx + m[0][1] * udy - m[0][2] * -m_focalLength;
-  yl = m[1][0] * udx + m[1][1] * udy - m[1][2] * -m_focalLength;
-  zl = m[2][0] * udx + m[2][1] * udy - m[2][2] * -m_focalLength;
+  xl = m[0][0] * udx + m[0][1] * udy - m[0][2] * -atof(m_focal_length_model[1].c_str());
+  yl = m[1][0] * udx + m[1][1] * udy - m[1][2] * -atof(m_focal_length_model[1].c_str());
+  zl = m[2][0] * udx + m[2][1] * udy - m[2][2] * -atof(m_focal_length_model[1].c_str());
 
   double x, y, z;
   double xc, yc, zc;
@@ -315,7 +315,7 @@ csm::EcefLocus UsgsAstroFrameSensorModel::imageToRemoteImagingLocus(const csm::I
   // Get rotation matrix and transform to a body-fixed frame
   double m[3][3];
   calcRotationMatrix(m);
-  std::vector<double> lookC { undistortedFocalPlaneX, undistortedFocalPlaneY, m_focalLength };
+  std::vector<double> lookC { undistortedFocalPlaneX, undistortedFocalPlaneY, atof(m_focal_length_model[1].c_str()) };
   std::vector<double> lookB {
     m[0][0] * lookC[0] + m[0][1] * lookC[1] + m[0][2] * lookC[2],
     m[1][0] * lookC[0] + m[1][1] * lookC[1] + m[1][2] * lookC[2],
@@ -347,15 +347,15 @@ csm::ImageCoord UsgsAstroFrameSensorModel::getImageStart() const {
 csm::ImageVector UsgsAstroFrameSensorModel::getImageSize() const {
 
   csm::ImageVector size;
-  size.line = m_nLines;
-  size.samp = m_nSamples;
+  size.line = m_image_lines;
+  size.samp = m_image_samples;
   return size;
 }
 
 
 std::pair<csm::ImageCoord, csm::ImageCoord> UsgsAstroFrameSensorModel::getValidImageRange() const {
     csm::ImageCoord min_pt(m_startingDetectorLine, m_startingDetectorSample);
-    csm::ImageCoord max_pt(m_nLines, m_nSamples);
+    csm::ImageCoord max_pt(m_image_lines, m_image_samples);
     return std::pair<csm::ImageCoord, csm::ImageCoord>(min_pt, max_pt);
 }
 
@@ -368,9 +368,9 @@ std::pair<double, double> UsgsAstroFrameSensorModel::getValidHeightRange() const
 csm::EcefVector UsgsAstroFrameSensorModel::getIlluminationDirection(const csm::EcefCoord &groundPt) const {
   // ground (body-fixed) - sun (body-fixed) gives us the illumination direction.
   return csm::EcefVector {
-    groundPt.x - m_sunPosition[0],
-    groundPt.y - m_sunPosition[1],
-    groundPt.z - m_sunPosition[2]
+    groundPt.x - m_sun_position[0],
+    groundPt.y - m_sun_position[1],
+    groundPt.z - m_sun_position[2]
   };
 }
 
@@ -379,10 +379,10 @@ double UsgsAstroFrameSensorModel::getImageTime(const csm::ImageCoord &imagePt) c
 
   // check if the image point is in range
   if (imagePt.samp >= m_startingDetectorSample &&
-      imagePt.samp <= (m_startingDetectorSample + m_nSamples) &&
+      imagePt.samp <= (m_startingDetectorSample + m_image_samples) &&
       imagePt.line >= m_startingDetectorSample &&
-      imagePt.line <= (m_startingDetectorLine + m_nLines)) {
-    return m_ephemerisTime;
+      imagePt.line <= (m_startingDetectorLine + m_image_lines)) {
+    return m_starting_ephemeris_time;
   }
   else {
     throw csm::Error(csm::Error::BOUNDS,
@@ -396,9 +396,9 @@ csm::EcefCoord UsgsAstroFrameSensorModel::getSensorPosition(const csm::ImageCoor
 
   // check if the image point is in range
   if (imagePt.samp >= m_startingDetectorSample &&
-      imagePt.samp <= (m_startingDetectorSample + m_nSamples) &&
+      imagePt.samp <= (m_startingDetectorSample + m_image_samples) &&
       imagePt.line >= m_startingDetectorSample &&
-      imagePt.line <= (m_startingDetectorLine + m_nLines)) {
+      imagePt.line <= (m_startingDetectorLine + m_image_lines)) {
     csm::EcefCoord sensorPosition;
     sensorPosition.x = m_currentParameterValue[0];
     sensorPosition.y = m_currentParameterValue[1];
@@ -415,7 +415,7 @@ csm::EcefCoord UsgsAstroFrameSensorModel::getSensorPosition(const csm::ImageCoor
 
 
 csm::EcefCoord UsgsAstroFrameSensorModel::getSensorPosition(double time) const {
-    if (time == m_ephemerisTime){
+    if (time == m_starting_ephemeris_time){
         csm::EcefCoord sensorPosition;
         sensorPosition.x = m_currentParameterValue[0];
         sensorPosition.y = m_currentParameterValue[1];
@@ -423,7 +423,7 @@ csm::EcefCoord UsgsAstroFrameSensorModel::getSensorPosition(double time) const {
 
         return sensorPosition;
     } else {
-        std::string aMessage = "Valid image time is %d", m_ephemerisTime;
+        std::string aMessage = "Valid image time is %d", m_starting_ephemeris_time;
         throw csm::Error(csm::Error::BOUNDS,
                          aMessage,
                          "UsgsAstroFrameSensorModel::getSensorPosition");
@@ -433,8 +433,8 @@ csm::EcefCoord UsgsAstroFrameSensorModel::getSensorPosition(double time) const {
 
 csm::EcefVector UsgsAstroFrameSensorModel::getSensorVelocity(const csm::ImageCoord &imagePt) const {
   // Make sure the passed coordinate is with the image dimensions.
-  if (imagePt.samp < 0.0 || imagePt.samp > m_nSamples ||
-      imagePt.line < 0.0 || imagePt.line > m_nLines) {
+  if (imagePt.samp < 0.0 || imagePt.samp > m_image_samples ||
+      imagePt.line < 0.0 || imagePt.line > m_image_lines) {
     throw csm::Error(csm::Error::BOUNDS, "Image coordinate out of bounds.",
                      "UsgsAstroFrameSensorModel::getSensorVelocity");
   }
@@ -449,14 +449,14 @@ csm::EcefVector UsgsAstroFrameSensorModel::getSensorVelocity(const csm::ImageCoo
 
 
 csm::EcefVector UsgsAstroFrameSensorModel::getSensorVelocity(double time) const {
-    if (time == m_ephemerisTime){
+    if (time == m_starting_ephemeris_time){
         return csm::EcefVector {
           m_spacecraftVelocity[0],
           m_spacecraftVelocity[1],
           m_spacecraftVelocity[2]
         };
     } else {
-        std::string aMessage = "Valid image time is %d", m_ephemerisTime;
+        std::string aMessage = "Valid image time is %d", m_starting_ephemeris_time;
         throw csm::Error(csm::Error::BOUNDS,
                          aMessage,
                          "UsgsAstroFrameSensorModel::getSensorVelocity");
@@ -567,7 +567,7 @@ std::vector<double> UsgsAstroFrameSensorModel::computeGroundPartials(const csm::
     w = m[2][0] * xo + m[2][1] * yo + m[2][2] * zo;
 
     double fdw, udw, vdw;
-    fdw = m_focalLength / w;
+    fdw = atof(m_focal_length_model[1].c_str()) / w;
     udw = u / w;
     vdw = v / w;
 
@@ -686,11 +686,9 @@ std::string UsgsAstroFrameSensorModel::getReferenceDateAndTime() const {
                    "UsgsAstroFrameSensorModel::getReferenceDateAndTime");
 }
 
-
 std::string UsgsAstroFrameSensorModel::getModelState() const {
     json state = {
       {"model_name", _SENSOR_MODEL_NAME},
-      {"m_focalLength" , m_focalLength},
       {"m_iTransS", {m_iTransS[0], m_iTransS[1], m_iTransS[2]}},
       {"m_iTransL", {m_iTransL[0], m_iTransL[1], m_iTransL[2]}},
       {"m_boresight", {m_boresight[0], m_boresight[1], m_boresight[2]}},
@@ -698,16 +696,15 @@ std::string UsgsAstroFrameSensorModel::getModelState() const {
       {"m_transY", {m_transY[0], m_transY[1], m_transY[2]}},
       {"m_iTransS", {m_iTransS[0], m_iTransS[1], m_iTransS[2]}},
       {"m_iTransL", {m_iTransL[0], m_iTransL[1], m_iTransL[2]}},
-      {"m_majorAxis", m_majorAxis},
-      {"m_minorAxis", m_minorAxis},
+      {"m_radii[0]", m_radii[0]},
+      {"m_radii[1]", m_radii[1]},
       {"m_spacecraftVelocity", {m_spacecraftVelocity[0], m_spacecraftVelocity[1], m_spacecraftVelocity[2]}},
-      {"m_sunPosition", {m_sunPosition[0], m_sunPosition[1], m_sunPosition[2]}},
+      {"m_sun_position", {m_sun_position[0], m_sun_position[1], m_sun_position[2]}},
       {"m_startingDetectorSample", m_startingDetectorSample},
       {"m_startingDetectorLine", m_startingDetectorLine},
       {"m_targetName", m_targetName},
       {"m_ifov", m_ifov},
       {"m_instrumentID", m_instrumentID},
-      {"m_focalLengthEpsilon", m_focalLengthEpsilon},
       {"m_ccdCenter", {m_ccdCenter[0], m_ccdCenter[1]}},
       {"m_line_pp", m_line_pp},
       {"m_sample_pp", m_sample_pp},
@@ -721,9 +718,9 @@ std::string UsgsAstroFrameSensorModel::getModelState() const {
       {"m_originalHalfSamples", m_originalHalfSamples},
       {"m_spacecraftName", m_spacecraftName},
       {"m_pixelPitch", m_pixelPitch},
-      {"m_ephemerisTime", m_ephemerisTime},
-      {"m_nLines", m_nLines},
-      {"m_nSamples", m_nSamples},
+      {"m_starting_ephemeris_time", m_starting_ephemeris_time},
+      {"m_image_lines", m_image_lines},
+      {"m_image_samples", m_image_samples},
       {"m_currentParameterValue", {m_currentParameterValue[0], m_currentParameterValue[1],
                                    m_currentParameterValue[2], m_currentParameterValue[3],
                                    m_currentParameterValue[4], m_currentParameterValue[5]}},
@@ -746,14 +743,14 @@ void UsgsAstroFrameSensorModel::replaceModelState(const std::string& modelState)
         // distinct class a la the generic line scan model.
         m_ccdCenter[0] = state["m_ccdCenter"][0];
         m_ccdCenter[1] = state["m_ccdCenter"][1];
-        m_ephemerisTime = state["m_ephemerisTime"];
-        m_focalLength = state["m_focalLength"];
-        m_focalLengthEpsilon = state["m_focalLengthEpsilon"];
+        m_starting_ephemeris_time = state["m_starting_ephemeris_time"];
+        m_focal_length_model[1] = state["m_focal_length_model"][1];
+        m_focal_length_model[2] = state["m_focal_length_model"][2];
         m_ifov = state["m_ifov"];
         m_instrumentID = state["m_instrumentID"];
 
-        m_majorAxis = state["m_majorAxis"];
-        m_minorAxis = state["m_minorAxis"];
+        m_radii[0] = state["m_radii[0]"];
+        m_radii[1] = state["m_radii[1]"];
         m_startingDetectorLine = state["m_startingDetectorLine"];
         m_startingDetectorSample = state["m_startingDetectorSample"];
         m_line_pp = state["m_line_pp"];
@@ -762,8 +759,8 @@ void UsgsAstroFrameSensorModel::replaceModelState(const std::string& modelState)
         m_originalHalfSamples = state["m_originalHalfSamples"];
         m_spacecraftName = state["m_spacecraftName"];
         m_pixelPitch = state["m_pixelPitch"];
-        m_nLines = state["m_nLines"];
-        m_nSamples = state["m_nSamples"];
+        m_image_lines = state["m_image_lines"];
+        m_image_samples = state["m_image_samples"];
         m_minElevation = state["m_minElevation"];
         m_maxElevation = state["m_maxElevation"];
 
@@ -775,7 +772,7 @@ void UsgsAstroFrameSensorModel::replaceModelState(const std::string& modelState)
             m_transX[i] = state["m_transX"][i];
             m_transY[i] = state["m_transY"][i];
             m_spacecraftVelocity[i] = state["m_spacecraftVelocity"][i];
-            m_sunPosition[i] = state["m_sunPosition"][i];
+            m_sun_position[i] = state["m_sun_position"][i];
         }
 
         // Having types as vectors, instead of arrays makes interoperability with
@@ -988,8 +985,8 @@ void UsgsAstroFrameSensorModel::losEllipsoidIntersect(
    // coordinate system with origin at the center of the earth.
 
    double ap, bp, k;
-   ap = m_majorAxis + height;
-   bp = m_minorAxis + height;
+   ap = atof(m_radii[0].c_str()) + height;
+   bp = atof(m_radii[1].c_str()) + height;
    k = ap * ap / (bp * bp);
 
    // Solve quadratic equation for scale factor
